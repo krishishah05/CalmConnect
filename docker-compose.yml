@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DB_PATH=/app/data/journal.db
+      - TOKENS_FILE=/app/data/tokens.json

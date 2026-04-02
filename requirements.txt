@@ -1,2 +1,3 @@
-flask
-textblob
+flask>=2.3
+textblob>=0.18
+rich>=13.0
