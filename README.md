@@ -1,20 +1,18 @@
 # CalmConnect
 
-CalmConnect started as a small personal project because I wanted somewhere to write down my thoughts at the end of the day. Over time it turned into a way to keep track of little moments, notice how I was feeling, and come back to experiences I didn't want to forget.
+CalmConnect started as a small journaling project built around a simple idea: sometimes, after a long day, you just need somewhere to put your thoughts. I've continued developing it over time, and journaling during my semester abroad has made me appreciate it even more. Being able to revisit what I was thinking and feeling during different trips is something I know I'll love looking back on.
 
-I'm studying abroad this semester, and that's when it started to matter more to me. When I look back on these months, I want to remember more than photos and itineraries. I want to remember what the days actually felt like.
+It's a private journal you can use from the terminal or the browser. You can tag entries by trip or city, search for a place later, and read everything from one trip back in order. It does some light analysis of the words you write, but it isn't a therapist or a chatbot, and it doesn't pretend to know how you feel.
 
-So this is a private journal that runs on my own laptop. I can write from the terminal or the browser, tag entries by trip, and later read a whole trip back in order. It does some light analysis of the words I write, but it isn't a therapist or a chatbot, and it doesn't pretend to know how I feel.
-
-![A trip collection in the browser](docs/screenshots/trip.png)
-<sub>A trip collection in the browser (sample entries).</sub>
+![The Travel collection, with entries in the order they were written](docs/screenshots/trip.png)
+<sub>A collection in the browser, using the sample entries from the demo journal.</sub>
 
 ## What it does
 
 - Write, edit and delete entries. Each one can have a title, a place and tags, and you can backdate an entry if you missed a day.
 - If you don't know where to start, it can give you a prompt.
-- Every tag becomes a collection. Tag entries `morocco` or `copenhagen` and you can read that trip from start to finish, with a small timeline of how the tone of your writing changed along the way.
-- Search text, titles and places, and filter by tag or date.
+- Every tag becomes a collection. Tag entries `italy` or `dublin` and you can read that trip from start to finish, with a small timeline and summary of how the tone of your writing changed along the way.
+- Search text, titles and places (so searching a city finds entries from there), and filter by tag or date range. Filters combine, so you can search within one trip.
 - A weekly reflection shows which days you wrote, the mix of tones, the feelings that came up most and your streaks, summed up in a few plain sentences.
 - "Looking back" brings up an older entry, preferring one from this day in an earlier year.
 
@@ -43,37 +41,53 @@ pip install -e .
 
 That installs Flask, TextBlob and Rich and gives you a `calmconnect` command. Everything is saved in `./data` (your journal, a generated secret key and your CLI login), and git ignores that folder. [`.env.example`](.env.example) lists the optional settings.
 
+## Trying it with sample entries
+
+If you want to look around before writing anything, `demo.py` creates a separate demo journal in `demo-data/` with seven short sample entries from a semester abroad: Iceland, Prague, Barcelona, Rome, the Amalfi Coast, Dublin and Morocco.
+
+```bash
+python demo.py            # prints a generated password for the "demo" account
+CALMCONNECT_DATA_DIR=demo-data flask --app api.main run
+CALMCONNECT_DATA_DIR=demo-data calmconnect login demo
+
+python demo.py --reset    # delete the demo journal and start over
+```
+
+These are illustrative sample reflections, not diary entries from those exact days. Only the month or date range of each trip is known, so each entry sits on the first day of its period (the October trips all show October 1). The demo never opens your real journal in `data/`, and it won't overwrite an existing demo unless you pass `--reset`. The weekly reflection only covers the last seven days, so after a while the demo week will be empty, but collections, search and "Looking back" still work.
+
 ## From the terminal
 
 ```bash
 calmconnect register
 calmconnect journal                              # type freely, finish with Ctrl-D
 calmconnect journal --prompt
-calmconnect journal "Rainy day by the canal." --place Copenhagen --tags travel,copenhagen
-calmconnect journal "Finally writing about Saturday." --date 2026-11-07
+calmconnect journal "Your entry here" --place "Prague, Czech Republic" --tags prague,study-abroad
+calmconnect journal "Writing about a day I missed" --date 2026-11-07
 
-calmconnect history --tag copenhagen --oldest    # read a trip in order
-calmconnect history -s bakery                    # search text, titles and places
-calmconnect history --on 2026-10-02
+calmconnect history --tag italy --oldest         # read a trip in order
+calmconnect history -s dublin                    # search text, titles and places
+calmconnect history --tag travel -s halloween    # search within a trip
+calmconnect history --from 2026-10-01 --to 2026-10-31
 calmconnect show 12
 calmconnect edit 12                              # opens $EDITOR
-calmconnect edit 12 --tags travel,morocco
+calmconnect edit 12 --tags travel,ireland
 calmconnect delete 12
 
 calmconnect reflect                              # your week, plus an older entry
 calmconnect stats
-calmconnect tags morocco
+calmconnect tags                                 # every tag, with dates
+calmconnect tags travel                          # one collection, in order
 ```
 
-Here's `calmconnect tags morocco` after a trip:
+Here's the start of `calmconnect tags travel` in the demo journal:
 
 ```
-#morocco  4 entries, 2026-10-01 to 2026-10-06
+#travel  6 entries, 2026-08-01 to 2026-11-06
 
- Oct 1     Oct 2     Oct 4     Oct 6
-positive  positive  positive  negative
-Your writing sounded more negative toward the end than at the start.
-Feelings named most: grateful (2), anxious (1), calm (1)
+ Aug 1    Oct 1     Oct 30    Nov 6
+neutral  positive  positive  positive
+The tone of your writing stayed fairly steady throughout.
+Feelings named most: happy (2)
 ```
 
 Every command has `--help`. If you don't want to install it, `python -m cli.main` works the same way from the project folder.
@@ -87,7 +101,7 @@ flask --app api.main run
 Then open http://127.0.0.1:5000 and make an account. There are four pages: Write, Journal, Collections and Reflect. It's plain HTML and CSS with no JavaScript, works on a phone, and follows your system's dark mode.
 
 <p>
-  <img src="docs/screenshots/write.png" width="49%" alt="Writing an entry with a prompt">
+  <img src="docs/screenshots/search.png" width="49%" alt="Searching the journal for Italy">
   <img src="docs/screenshots/reflect.png" width="49%" alt="The weekly reflection page">
 </p>
 
@@ -147,6 +161,7 @@ app/storage.py    SQLite schema and queries
 api/main.py       Flask app setup and the JSON API
 api/web.py        browser pages (templates/ and static/ sit next to it)
 cli/main.py       the calmconnect command
+demo.py           creates the optional demo journal
 tests/            one test file per area
 docs/screenshots  the images in this README
 ```
