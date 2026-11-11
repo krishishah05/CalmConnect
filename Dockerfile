@@ -2,13 +2,19 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Timezone data, so setting TZ changes where day boundaries fall.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt \
-    && python -m textblob.download_corpora
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-RUN mkdir -p data
 
+ENV CALMCONNECT_DATA_DIR=/app/data
 EXPOSE 5000
 
-CMD ["python", "api/main.py"]
+# The app listens on all interfaces inside the container; docker-compose only
+# publishes the port on localhost.
+CMD ["python", "-m", "api.main"]

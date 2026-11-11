@@ -4,4 +4,6 @@ data/
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
+build/
 .DS_Store
