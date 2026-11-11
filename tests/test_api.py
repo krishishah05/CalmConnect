@@ -40,8 +40,7 @@ class TestAuthentication(APITestCase):
     def test_protected_routes_need_a_token(self):
         routes = [("get", "/api/entries"), ("post", "/api/entries"), ("get", "/api/entries/1"),
                   ("patch", "/api/entries/1"), ("delete", "/api/entries/1"), ("get", "/api/stats"),
-                  ("get", "/api/tags"), ("get", "/api/tags/x"), ("get", "/api/prompt"),
-                  ("get", "/api/revisit"), ("delete", "/api/tokens/current")]
+                  ("get", "/api/tags"), ("get", "/api/tags/x"), ("get", "/api/revisit"), ("delete", "/api/tokens/current")]
         for method, url in routes:
             for headers in [{}, {"Authorization": "Bearer wrong"}, {"Authorization": self.token}]:
                 with self.subTest(method=method, url=url, headers=headers):
@@ -115,6 +114,13 @@ class TestEntries(APITestCase):
         self.assertEqual(self.client.get(f"/api/entries/{entry_id}", headers=self.headers()).status_code, 404)
         self.assertEqual(self.client.delete(f"/api/entries/{entry_id}", headers=self.headers()).status_code, 404)
 
+    def test_out_of_range_numbers_are_handled(self):
+        # Larger than SQLite's 64-bit integers; these used to cause a 500.
+        huge = 10**20
+        self.assertEqual(self.client.get(f"/api/entries/{huge}", headers=self.headers()).status_code, 404)
+        self.assertEqual(self.client.delete(f"/api/entries/{huge}", headers=self.headers()).status_code, 404)
+        self.assertEqual(self.client.get(f"/api/entries?offset={huge}", headers=self.headers()).status_code, 400)
+
     def test_users_cannot_touch_each_others_entries(self):
         entry_id = self.create("alice's private thoughts", tags=["secret"]).get_json()["id"]
         bob = self.register_and_get_token("bob")
@@ -180,8 +186,7 @@ class TestReflectionEndpoints(APITestCase):
         self.assertEqual([e["text"] for e in data["entries"]], ["Arrived in Fes", "Leaving tomorrow"])
         self.assertNotIn("user_id", data["entries"][0])
 
-    def test_prompt_and_revisit(self):
-        self.assertTrue(self.client.get("/api/prompt", headers=self.headers()).get_json()["prompt"])
+    def test_revisit(self):
         self.assertIsNone(self.client.get("/api/revisit", headers=self.headers()).get_json()["entry"])
         self.create("An older memory", date="2026-01-01")
         data = self.client.get("/api/revisit", headers=self.headers()).get_json()

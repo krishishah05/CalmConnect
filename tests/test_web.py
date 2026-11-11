@@ -76,7 +76,7 @@ class TestWebJournal(WebTestCase):
     def test_write_read_edit_delete(self):
         resp = self.post("/entries", {"text": "First night in Copenhagen. Tired but happy.",
                                       "title": "Arrival", "place": "Copenhagen",
-                                      "tags": "travel, copenhagen", "entry_date": ""}, "/")
+                                      "tags": "travel, copenhagen", "date": ""}, "/")
         self.assertEqual(resp.status_code, 302)
         entry_id = int(resp.headers["Location"].rsplit("/", 1)[1])
 
@@ -132,6 +132,8 @@ class TestWebJournal(WebTestCase):
         html = self.client.get("/entries?q=class").get_data(as_text=True)
         self.assertIn("Back to class", html)
         self.assertNotIn("Mint tea", html)
+        self.assertEqual(self.client.get("/entries?page=100000000000000000000").status_code, 200)
+        self.assertEqual(self.client.get("/entries/100000000000000000000").status_code, 404)
         resp = self.client.get("/entries?from=2026-10-10&to=2026-10-01")
         self.assertIn("on or before", resp.get_data(as_text=True))
 

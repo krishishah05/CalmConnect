@@ -48,7 +48,7 @@ class TestTokens(TempDataTestCase):
         self.user_id = self.make_user()
 
     def test_token_identifies_user(self):
-        token = auth.issue_token(self.user_id, "api")
+        token = auth.issue_token(self.user_id)
         self.assertEqual(auth.user_for_token(token)["id"], self.user_id)
 
     def test_unknown_or_missing_token(self):
@@ -57,7 +57,7 @@ class TestTokens(TempDataTestCase):
         self.assertIsNone(auth.user_for_token(None))
 
     def test_only_a_hash_of_the_token_is_stored(self):
-        token = auth.issue_token(self.user_id, "cli")
+        token = auth.issue_token(self.user_id)
         conn = sqlite3.connect(storage.db_path())
         stored = [row[0] for row in conn.execute("SELECT token_hash FROM auth_tokens")]
         conn.close()
@@ -66,15 +66,15 @@ class TestTokens(TempDataTestCase):
         self.assertNotIn(token, stored[0])
 
     def test_revoked_token_stops_working(self):
-        token = auth.issue_token(self.user_id, "web")
-        other = auth.issue_token(self.user_id, "cli")
+        token = auth.issue_token(self.user_id)
+        other = auth.issue_token(self.user_id)
         auth.revoke_token(token)
         self.assertIsNone(auth.user_for_token(token))
         self.assertIsNotNone(auth.user_for_token(other))
 
     def test_expired_token_stops_working(self):
-        token = auth.issue_token(self.user_id, "api")
-        later = datetime.now(timezone.utc) + auth.TOKEN_LIFETIME["api"] + timedelta(seconds=5)
+        token = auth.issue_token(self.user_id)
+        later = datetime.now(timezone.utc) + auth.TOKEN_LIFETIME + timedelta(seconds=5)
         with patch("app.auth._now", return_value=later.isoformat(timespec="seconds")):
             self.assertIsNone(auth.user_for_token(token))
 

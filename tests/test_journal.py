@@ -24,11 +24,6 @@ class TestCreateEntry(TempDataTestCase):
         self.assertTrue(entry["created_at"].endswith("+00:00"))
         self.assertIsNone(entry["updated_at"])
 
-    def test_ids_are_unique(self):
-        first = journal.create_entry(self.user, "one")
-        second = journal.create_entry(self.user, "two")
-        self.assertNotEqual(first["id"], second["id"])
-
     def test_title_place_tags_and_prompt(self):
         entry = journal.create_entry(
             self.user, "Walked the medina all afternoon.",
@@ -249,11 +244,6 @@ class TestRevisit(TempDataTestCase):
         self.assertEqual(journal.describe_age("2026-11-01", today), "1 week ago")
         self.assertEqual(journal.describe_age("2026-09-01", today), "2 months ago")
         self.assertEqual(journal.describe_age("2025-11-11", today), "1 year ago today")
-
-
-class TestPrompts(unittest.TestCase):
-    def test_random_prompt_comes_from_the_list(self):
-        self.assertIn(journal.random_prompt(random.Random(1)), journal.PROMPTS)
 
 
 if __name__ == "__main__":

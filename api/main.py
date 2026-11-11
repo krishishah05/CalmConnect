@@ -83,10 +83,10 @@ def create_token():
     user = auth.check_login(data.get("username"), data.get("password"))
     if user is None:
         return _error("Incorrect username or password.", 401)
-    token = auth.issue_token(user["id"], "api")
+    token = auth.issue_token(user["id"])
     return jsonify({
         "token": token,
-        "expires_in_days": auth.TOKEN_LIFETIME["api"].days,
+        "expires_in_days": auth.TOKEN_LIFETIME.days,
     }), 201
 
 
@@ -186,12 +186,6 @@ def stats():
     return jsonify(weekly_summary(g.user["id"]))
 
 
-@api.get("/prompt")
-@token_required
-def prompt():
-    return jsonify({"prompt": journal.random_prompt()})
-
-
 @api.get("/revisit")
 @token_required
 def revisit():
@@ -206,15 +200,18 @@ def revisit():
 def _load_secret_key() -> str:
     """Use CALMCONNECT_SECRET_KEY if set. Otherwise generate a random key once
     and keep it in the (git-ignored) data directory so logins survive a
-    restart. Nothing secret is ever hardcoded."""
+    restart."""
     key = os.getenv("CALMCONNECT_SECRET_KEY")
     if key:
         return key
     path = data_dir() / "secret_key"
-    if not path.exists():
+    try:
+        # O_EXCL: if two processes start at once, only one writes the key.
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(fd, "w") as f:
-            f.write(secrets.token_hex(32))
+    except FileExistsError:
+        return path.read_text().strip()
+    with os.fdopen(fd, "w") as f:
+        f.write(secrets.token_hex(32))
     return path.read_text().strip()
 
 
@@ -254,7 +251,7 @@ def create_app(config: dict | None = None) -> Flask:
         SESSION_COOKIE_SAMESITE="Lax",
         # Turn on when serving over HTTPS so the cookie is never sent in clear text.
         SESSION_COOKIE_SECURE=os.getenv("CALMCONNECT_SECURE_COOKIES") == "1",
-        PERMANENT_SESSION_LIFETIME=auth.TOKEN_LIFETIME["web"],
+        PERMANENT_SESSION_LIFETIME=auth.TOKEN_LIFETIME,
     )
     app.config.update(config or {})
     app.register_blueprint(api)

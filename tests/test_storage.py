@@ -27,8 +27,11 @@ class TestStorage(TempDataTestCase):
         self.alice = self.make_user("alice")
         self.bob = self.make_user("bob")
 
-    def test_database_lives_in_the_data_dir(self):
-        self.assertEqual(str(storage.db_path()), os.path.join(self.data_dir, "journal.db"))
+    def test_new_data_dir_is_private(self):
+        fresh = os.path.join(self.data_dir, "fresh")
+        with patch.dict(os.environ, {"CALMCONNECT_DATA_DIR": fresh}):
+            storage.data_dir()
+        self.assertEqual(os.stat(fresh).st_mode & 0o777, 0o700)
 
     def test_db_path_override(self):
         other = os.path.join(self.data_dir, "nested", "other.db")
@@ -69,11 +72,14 @@ class TestStorage(TempDataTestCase):
         storage.delete_entry(self.alice, entry_id)
         self.assertEqual(storage.list_tags(self.alice), [])
 
-    def test_update_refuses_unknown_columns(self):
-        entry_id = storage.insert_entry(self.alice, _make_entry())
-        with self.assertRaises(ValueError):
-            storage.update_entry(self.alice, entry_id, {"user_id": self.bob}, "2024-03-02T00:00:00+00:00")
-        self.assertIsNotNone(storage.get_entry(self.alice, entry_id))
+    def test_update_is_scoped_to_the_owner(self):
+        entry_id = storage.insert_entry(self.alice, _make_entry(tags=["mine"]))
+        edited = {**storage.get_entry(self.alice, entry_id), "text": "changed",
+                  "tags": [], "updated_at": "2024-03-02T00:00:00+00:00"}
+        self.assertFalse(storage.update_entry(self.bob, edited))
+        self.assertEqual(storage.get_entry(self.alice, entry_id)["tags"], ["mine"])
+        self.assertTrue(storage.update_entry(self.alice, edited))
+        self.assertEqual(storage.get_entry(self.alice, entry_id)["tags"], [])
 
     def test_failed_write_is_rolled_back(self):
         with self.assertRaises(sqlite3.IntegrityError):
@@ -84,7 +90,9 @@ class TestStorage(TempDataTestCase):
 
 
 class TestLegacyMigration(unittest.TestCase):
-    """Databases from the first version had a free-text user_id and no accounts."""
+    """Databases from the first version had a free-text user_id and no accounts.
+    The schema and rows below match what the original code wrote, including an
+    empty entry, which its CLI allowed."""
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
@@ -105,6 +113,7 @@ class TestLegacyMigration(unittest.TestCase):
             "INSERT INTO entries (user_id, date, text, mood, polarity, emotions) VALUES (?, ?, ?, ?, ?, ?)",
             [("alice", "2025-07-01", "I am not happy", "negative", -0.4, "happy"),
              ("alice", "2025-07-02", "Good day", "positive", 0.7, ""),
+             ("alice", "2025-07-03", "", "neutral", 0.0, ""),
              ("bob", "2025-07-01", "bob's entry", "neutral", 0.0, "")],
         )
         conn.commit()
@@ -113,10 +122,11 @@ class TestLegacyMigration(unittest.TestCase):
     def test_old_rows_are_kept_and_can_be_imported(self):
         from app import auth
         user = auth.register("alice_new", "long enough password")
-        self.assertEqual(journal.import_legacy(user, "alice"), 2)
+        self.assertEqual(journal.import_legacy(user, "alice"), 3)
 
         entries = journal.find_entries(user, oldest_first=True)
-        self.assertEqual([e["entry_date"] for e in entries], ["2025-07-01", "2025-07-02"])
+        self.assertEqual([(e["entry_date"], e["text"]) for e in entries],
+                         [("2025-07-01", "I am not happy"), ("2025-07-02", "Good day"), ("2025-07-03", "")])
         # Re-analysed with the current rules, so the old false "happy" is gone.
         self.assertEqual(entries[0]["emotions"], [])
 

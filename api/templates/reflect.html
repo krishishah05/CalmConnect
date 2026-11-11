@@ -9,6 +9,13 @@
   {% for line in summary.reflection %}<p>{{ line }}</p>{% endfor %}
 </section>
 
+{% if past_entry %}
+<section>
+  <h2>Looking back</h2>
+  {{ entry_card(past_entry, show_age=true) }}
+</section>
+{% endif %}
+
 <section>
   <h2>Day by day</h2>
   {{ day_dots(summary.daily) }}
@@ -39,13 +46,6 @@
     <p>Longest streak: <strong>{{ summary.longest_streak }}</strong> {{ "day" if summary.longest_streak == 1 else "days" }}</p>
   </div>
 </section>
-
-{% if past_entry %}
-<section>
-  <h2>Looking back</h2>
-  {{ entry_card(past_entry, show_age=true) }}
-</section>
-{% endif %}
 
 <p class="hint">These numbers describe the words you wrote, not how you actually felt.</p>
 {% endblock %}

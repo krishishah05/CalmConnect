@@ -170,6 +170,24 @@ class TestStatsFromDatabase(TempDataTestCase):
         self.assertEqual(summary["total_entries"], 1)
         self.assertEqual(summary["current_streak"], 1)
 
+    def test_editing_and_deleting_update_trip_collections(self):
+        first = journal.create_entry(self.user, "Arrived, nervous", entry_date="2026-10-01", tags="morocco")
+        last = journal.create_entry(self.user, "So happy here", entry_date="2026-10-03", tags="morocco")
+
+        # Retagging moves an entry from one trip to another.
+        journal.edit_entry(self.user, last["id"], {"tags": "lisbon"})
+        self.assertEqual(collection_summary(self.user, "morocco")["total_entries"], 1)
+        self.assertEqual(collection_summary(self.user, "lisbon")["first_date"], "2026-10-03")
+
+        # Changing the date changes the trip's span.
+        journal.edit_entry(self.user, first["id"], {"date": "2026-09-28"})
+        self.assertEqual(collection_summary(self.user, "morocco")["first_date"], "2026-09-28")
+
+        # Deleting a trip's only entry removes the collection entirely.
+        journal.delete_entry(self.user, first["id"])
+        self.assertIsNone(collection_summary(self.user, "morocco"))
+        self.assertEqual([t["tag"] for t in journal.list_collections(self.user)], ["lisbon"])
+
     def test_stats_only_include_the_users_own_entries(self):
         bob = self.make_user("bob")
         journal.create_entry(bob, "bob's entry", entry_date="2026-11-11", tags="trip")

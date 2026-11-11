@@ -15,11 +15,11 @@ import shlex
 import subprocess
 import sys
 import tempfile
-from datetime import date
 from pathlib import Path
 
 from rich import box
 from rich.console import Console
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -31,6 +31,9 @@ from app.storage import data_dir
 console = Console(highlight=False)
 
 TONE_STYLE = {"positive": "green", "neutral": "yellow", "negative": "red"}
+
+# Anything the user wrote goes through rich.markup.escape before printing, so
+# text like "[/b]" in an entry is shown as-is instead of read as formatting.
 
 
 class CliError(Exception):
@@ -76,10 +79,7 @@ def _read_multiline(intro: str) -> str:
     console.print(intro)
     console.print("[dim]Finish with Ctrl-D on an empty line (Ctrl-Z then Enter on Windows). "
                   "Ctrl-C cancels.[/dim]\n")
-    try:
-        return sys.stdin.read()
-    except KeyboardInterrupt:
-        raise CliError("Cancelled. Nothing was saved.") from None
+    return sys.stdin.read()
 
 
 def _edit_in_editor(text: str) -> str | None:
@@ -119,7 +119,7 @@ def _tone(sentiment: str | None) -> str:
 def _entry_heading(entry: dict) -> str:
     parts = [journal.nice_date(entry["entry_date"])]
     if entry["place"]:
-        parts.append(entry["place"])
+        parts.append(escape(entry["place"]))
     return " · ".join(parts)
 
 
@@ -134,8 +134,8 @@ def _entry_footer(entry: dict) -> str:
 
 def _snippet(entry: dict, length: int = 120) -> str:
     text = " ".join(entry["text"].split())
-    text = text if len(text) <= length else text[: length - 1].rstrip() + "…"
-    return f"[bold]{entry['title']}[/bold]  {text}" if entry["title"] else text
+    text = escape(text if len(text) <= length else text[: length - 1].rstrip() + "…")
+    return f"[bold]{escape(entry['title'])}[/bold]  {text}" if entry["title"] else text
 
 
 def _entries_table(entries: list[dict]) -> Table:
@@ -165,7 +165,7 @@ def _show_entry(entry: dict):
     body.append(entry["text"])
     console.print(Panel(
         body,
-        title=f"[bold]{entry['title'] or 'Journal entry'}[/bold]",
+        title=f"[bold]{escape(entry['title'] or 'Journal entry')}[/bold]",
         subtitle=f"#{entry['id']} · {_entry_heading(entry)}",
         box=box.ROUNDED,
         padding=(1, 2),
@@ -185,8 +185,8 @@ def _day_strip(days: list[dict], by_date: bool = False):
     ("Oct 1") since they can span weeks; the weekly view uses weekdays."""
     table = Table(box=None, show_header=True, pad_edge=False)
     for day in days:
-        label = date.fromisoformat(day["date"]) if by_date else None
-        table.add_column(f"{label:%b} {label.day}" if label else day["weekday"], justify="center")
+        table.add_column(journal.short_date(day["date"]) if by_date else day["weekday"],
+                         justify="center")
     table.add_row(*[_tone(d["sentiment"]) for d in days])
     console.print(table)
 
@@ -196,7 +196,7 @@ def _day_strip(days: list[dict], by_date: bool = False):
 def cmd_register(args):
     username = args.username or input("Choose a username: ")
     user_id = auth.register(username, _ask_password(confirm=True))
-    _save_session(auth.issue_token(user_id, "cli"))
+    _save_session(auth.issue_token(user_id))
     console.print(f"Welcome, [bold]{username.strip()}[/bold]. You're logged in. "
                   "Try `calmconnect journal` whenever you're ready.")
 
@@ -206,7 +206,7 @@ def cmd_login(args):
     user = auth.check_login(username, _ask_password())
     if user is None:
         raise CliError("Incorrect username or password.")
-    _save_session(auth.issue_token(user["id"], "cli"))
+    _save_session(auth.issue_token(user["id"]))
     console.print(f"Logged in as [bold]{user['username']}[/bold].")
 
 
@@ -271,7 +271,7 @@ def cmd_edit(args):
         # No options given: edit the text itself.
         new_text = _edit_in_editor(entry["text"])
         if new_text is None:
-            console.print(Panel(entry["text"], title="Current text", box=box.ROUNDED))
+            console.print(Panel(Text(entry["text"]), title="Current text", box=box.ROUNDED))
             new_text = _read_multiline("Type the new text for this entry.")
         if new_text.strip() == entry["text"]:
             console.print("No changes made.")
@@ -454,10 +454,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         args.func(args)
     except (ValidationError, CliError) as error:
-        console.print(f"[red]{error}[/red]")
+        console.print(f"[red]{escape(str(error))}[/red]")
         return 1
     except (KeyboardInterrupt, EOFError):
-        console.print("\nCancelled.")
+        console.print("\nCancelled. Nothing was saved.")
         return 1
     return 0
 

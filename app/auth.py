@@ -23,11 +23,7 @@ USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{3,32}$")
 MIN_PASSWORD_LENGTH = 8
 MAX_PASSWORD_LENGTH = 256
 
-TOKEN_LIFETIME = {
-    "web": timedelta(days=14),
-    "cli": timedelta(days=30),
-    "api": timedelta(days=30),
-}
+TOKEN_LIFETIME = timedelta(days=30)
 
 
 def _now() -> str:
@@ -66,16 +62,15 @@ def check_login(username: str, password: str) -> dict | None:
     return {"id": user["id"], "username": user["username"]}
 
 
-def issue_token(user_id: int, kind: str) -> str:
+def issue_token(user_id: int) -> str:
     """Create a login token. Only its hash is stored, so this is the one
     chance to hand the real token to the client."""
     token = secrets.token_urlsafe(32)
     now = datetime.now(timezone.utc)
-    expires = now + TOKEN_LIFETIME[kind]
+    expires = now + TOKEN_LIFETIME
     storage.save_token(
         user_id,
         _hash_token(token),
-        kind,
         now.isoformat(timespec="seconds"),
         expires.isoformat(timespec="seconds"),
     )

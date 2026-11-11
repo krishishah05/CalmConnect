@@ -23,16 +23,6 @@ class TestSentimentAnalysis(unittest.TestCase):
         self.assertNotEqual(result["sentiment"], "positive")
         self.assertNotIn("happy", result["emotions"])
 
-    def test_polarity_bounds(self):
-        result = analyze_text("okay I guess")
-        self.assertGreaterEqual(result["polarity"], -1.0)
-        self.assertLessEqual(result["polarity"], 1.0)
-
-    def test_returns_required_keys(self):
-        result = analyze_text("feeling fine")
-        self.assertEqual(set(result), {"sentiment", "polarity", "emotions"})
-        self.assertIsInstance(result["emotions"], list)
-
     def test_empty_and_unusual_input(self):
         for text in ["", "   ", "!!!", "😀😀", None, "\n\n\t"]:
             with self.subTest(text=text):

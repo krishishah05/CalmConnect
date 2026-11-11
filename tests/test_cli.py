@@ -121,6 +121,19 @@ class TestCliJournal(CliTestCase):
         self.assertEqual(code, 0, out)
         self.assertEqual(journal.get_entry(1, 1)["text"], "typo here")
 
+    def test_square_brackets_in_entries_are_printed_literally(self):
+        # Rich treats [tags] as formatting; an entry containing "[/b]" used to crash history.
+        self.run_cli("journal", "Todo [/] and [red]this[/red]", "--title", "Notes [/b]", "--place", "Room [b]2")
+        for argv in [("history",), ("show", "1"), ("reflect",)]:
+            code, out = self.run_cli(*argv)
+            self.assertEqual(code, 0, out)
+        code, out = self.run_cli("show", "1")
+        self.assertIn("Todo [/] and [red]this[/red]", out)
+        self.assertIn("Notes [/b]", out)
+        self.assertIn("Room [b]2", out)
+        code, out = self.run_cli("journal", "x", "--tags", "[bad]")
+        self.assertIn("'[bad]' isn't a valid tag", out)
+
     def test_friendly_errors(self):
         self.assertEqual(self.run_cli("journal", "   ")[0], 1)
         code, out = self.run_cli("journal", "hi", "--date", "2099-01-01")

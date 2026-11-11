@@ -48,3 +48,21 @@
 </div>
 {% endfor %}
 {% endmacro %}
+
+{# The fields shared by the write and edit forms. `values` is the submitted
+   form after a failed save, or the starting values. #}
+{% macro entry_fields(values, today) %}
+<label for="title" class="visually-hidden">Title</label>
+<input id="title" name="title" class="title-input" maxlength="120"
+       placeholder="Title (optional)" value="{{ values.get('title', '') }}">
+
+<label for="text" class="visually-hidden">Your entry</label>
+<textarea id="text" name="text" rows="14" maxlength="10000" required autofocus
+          placeholder="Write whatever is on your mind…">{{ values.get('text', '') }}</textarea>
+
+<div class="details-row">
+  <label>Place <input name="place" maxlength="120" placeholder="Where were you?" value="{{ values.get('place', '') }}"></label>
+  <label>Tags <input name="tags" placeholder="travel, morocco" value="{{ values.get('tags', '') }}"></label>
+  <label>Date <input type="date" name="date" max="{{ today }}" required value="{{ values.get('date', '') }}"></label>
+</div>
+{% endmacro %}

@@ -20,6 +20,8 @@ MAX_ENTRY_LENGTH = 10_000
 MAX_SHORT_TEXT = 120  # titles and places
 MAX_PROMPT_LENGTH = 300
 MAX_TAGS = 10
+MAX_OFFSET = 1_000_000
+MAX_SQLITE_INT = 2**63 - 1  # ids from URLs can be any size; SQLite's can't
 # Letters (including accented ones), numbers, '-' and '_'. Spaces become '-'.
 TAG_PATTERN = re.compile(r"^[\w-]{1,30}$")
 EDITABLE_FIELDS = {"text", "title", "place", "tags", "date"}
@@ -151,6 +153,8 @@ def create_entry(user_id: int, text, *, title=None, place=None, tags=None,
 
 
 def get_entry(user_id: int, entry_id: int) -> dict | None:
+    if not 0 < entry_id <= MAX_SQLITE_INT:
+        return None
     return storage.get_entry(user_id, entry_id)
 
 
@@ -163,30 +167,35 @@ def edit_entry(user_id: int, entry_id: int, changes: dict) -> dict | None:
         raise ValidationError(f"Unknown field(s): {', '.join(sorted(unknown))}.")
     if not changes:
         raise ValidationError("Nothing to update.")
+    entry = get_entry(user_id, entry_id)
+    if entry is None:
+        return None
 
-    columns = {}
     if "text" in changes:
-        columns["text"] = clean_text(changes["text"])
-        columns.update(analyze_text(columns["text"]))
+        entry["text"] = clean_text(changes["text"])
+        entry.update(analyze_text(entry["text"]))
     if "title" in changes:
-        columns["title"] = _clean_optional(changes["title"], "title", MAX_SHORT_TEXT)
+        entry["title"] = _clean_optional(changes["title"], "title", MAX_SHORT_TEXT)
     if "place" in changes:
-        columns["place"] = _clean_optional(changes["place"], "place", MAX_SHORT_TEXT)
+        entry["place"] = _clean_optional(changes["place"], "place", MAX_SHORT_TEXT)
+    if "tags" in changes:
+        entry["tags"] = clean_tags(changes["tags"])
     if "date" in changes:
         day = parse_date(changes["date"])
         if day is None:
             raise ValidationError("date can't be empty.")
         _check_not_future(day, local_today())
-        columns["entry_date"] = day.isoformat()
-    tags = clean_tags(changes["tags"]) if "tags" in changes else None
+        entry["entry_date"] = day.isoformat()
+    entry["updated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-    updated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    if not storage.update_entry(user_id, entry_id, columns, updated_at, tags=tags):
-        return None
+    if not storage.update_entry(user_id, entry):
+        return None  # deleted between reading and saving
     return storage.get_entry(user_id, entry_id)
 
 
 def delete_entry(user_id: int, entry_id: int) -> bool:
+    if not 0 < entry_id <= MAX_SQLITE_INT:
+        return False
     return storage.delete_entry(user_id, entry_id)
 
 
@@ -200,8 +209,8 @@ def find_entries(user_id: int, search=None, tag=None, date_from=None, date_to=No
         raise ValidationError("The 'from' date must be on or before the 'to' date.")
     if limit is not None and limit < 1:
         raise ValidationError("limit must be at least 1.")
-    if offset < 0:
-        raise ValidationError("offset can't be negative.")
+    if not 0 <= offset <= MAX_OFFSET:
+        raise ValidationError(f"offset must be between 0 and {MAX_OFFSET:,}.")
     search = search.strip() if isinstance(search, str) else None
     tag = normalize_tag(tag) if isinstance(tag, str) else None
     return storage.list_entries(
@@ -240,6 +249,12 @@ def nice_date(iso_day: str) -> str:
     """'2026-11-11' -> 'Wednesday, November 11, 2026'"""
     day = date.fromisoformat(iso_day)
     return f"{day:%A, %B} {day.day}, {day.year}"
+
+
+def short_date(iso_day: str) -> str:
+    """'2026-10-01' -> 'Oct 1'"""
+    day = date.fromisoformat(iso_day)
+    return f"{day:%b} {day.day}"
 
 
 def describe_age(entry_date: str, today: date | None = None) -> str:

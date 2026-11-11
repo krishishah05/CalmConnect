@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS auth_tokens (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token_hash TEXT NOT NULL UNIQUE,
-    kind       TEXT NOT NULL,          -- 'web', 'cli' or 'api'
     created_at TEXT NOT NULL,
     expires_at TEXT NOT NULL
 );
@@ -56,7 +55,8 @@ CREATE INDEX IF NOT EXISTS idx_entry_tags_tag ON entry_tags (tag);
 
 def data_dir() -> Path:
     path = Path(os.getenv("CALMCONNECT_DATA_DIR", PROJECT_ROOT / "data"))
-    path.mkdir(parents=True, exist_ok=True)
+    # Owner-only, so other accounts on a shared computer can't read the journal.
+    path.mkdir(mode=0o700, parents=True, exist_ok=True)
     return path
 
 
@@ -124,13 +124,13 @@ def get_user_by_username(username: str) -> dict | None:
         return dict(row) if row else None
 
 
-def save_token(user_id: int, token_hash: str, kind: str, created_at: str, expires_at: str):
+def save_token(user_id: int, token_hash: str, created_at: str, expires_at: str):
     with get_db() as conn:
         conn.execute("DELETE FROM auth_tokens WHERE expires_at <= ?", (created_at,))
         conn.execute(
-            "INSERT INTO auth_tokens (user_id, token_hash, kind, created_at, expires_at) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (user_id, token_hash, kind, created_at, expires_at),
+            "INSERT INTO auth_tokens (user_id, token_hash, created_at, expires_at) "
+            "VALUES (?, ?, ?, ?)",
+            (user_id, token_hash, created_at, expires_at),
         )
 
 
@@ -151,9 +151,6 @@ def delete_token(token_hash: str):
 
 
 # --- entries ----------------------------------------------------------------
-
-# Columns that callers are allowed to change with update_entry().
-EDITABLE_COLUMNS = ("entry_date", "title", "place", "text", "sentiment", "polarity", "emotions")
 
 
 def _attach_tags(conn, entries: list[dict]) -> list[dict]:
@@ -181,26 +178,30 @@ def _replace_tags(conn, entry_id: int, tags: list[str]):
     )
 
 
+def _insert_entry(conn, user_id: int, entry: dict) -> int:
+    cursor = conn.execute(
+        "INSERT INTO entries (user_id, entry_date, created_at, title, place, text, "
+        "prompt, sentiment, polarity, emotions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            user_id,
+            entry["entry_date"],
+            entry["created_at"],
+            entry.get("title"),
+            entry.get("place"),
+            entry["text"],
+            entry.get("prompt"),
+            entry["sentiment"],
+            entry["polarity"],
+            ",".join(entry["emotions"]),
+        ),
+    )
+    _replace_tags(conn, cursor.lastrowid, entry.get("tags", []))
+    return cursor.lastrowid
+
+
 def insert_entry(user_id: int, entry: dict) -> int:
     with get_db() as conn:
-        cursor = conn.execute(
-            "INSERT INTO entries (user_id, entry_date, created_at, title, place, text, "
-            "prompt, sentiment, polarity, emotions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                user_id,
-                entry["entry_date"],
-                entry["created_at"],
-                entry.get("title"),
-                entry.get("place"),
-                entry["text"],
-                entry.get("prompt"),
-                entry["sentiment"],
-                entry["polarity"],
-                ",".join(entry["emotions"]),
-            ),
-        )
-        _replace_tags(conn, cursor.lastrowid, entry.get("tags", []))
-        return cursor.lastrowid
+        return _insert_entry(conn, user_id, entry)
 
 
 def get_entry(user_id: int, entry_id: int) -> dict | None:
@@ -211,28 +212,30 @@ def get_entry(user_id: int, entry_id: int) -> dict | None:
         return _attach_tags(conn, [_to_entry(row)])[0] if row else None
 
 
-def update_entry(user_id: int, entry_id: int, changes: dict, updated_at: str,
-                 tags: list[str] | None = None) -> bool:
-    """Apply `changes` (column -> value) and, if given, replace the tags.
-    Returns False if the entry doesn't exist or belongs to someone else."""
-    unknown = set(changes) - set(EDITABLE_COLUMNS)
-    if unknown:
-        raise ValueError(f"Can't update columns: {sorted(unknown)}")
-    changes = {**changes, "updated_at": updated_at}
-    if "emotions" in changes:
-        changes["emotions"] = ",".join(changes["emotions"])
-    # Column names come from the whitelist above, never from user input.
-    assignments = ", ".join(f"{column} = ?" for column in changes)
-
+def update_entry(user_id: int, entry: dict) -> bool:
+    """Save an edited entry (all editable fields and its tags). Returns False
+    if the entry doesn't exist or belongs to someone else."""
     with get_db() as conn:
         cursor = conn.execute(
-            f"UPDATE entries SET {assignments} WHERE id = ? AND user_id = ?",
-            [*changes.values(), entry_id, user_id],
+            "UPDATE entries SET entry_date = ?, updated_at = ?, title = ?, place = ?, "
+            "text = ?, sentiment = ?, polarity = ?, emotions = ? "
+            "WHERE id = ? AND user_id = ?",
+            (
+                entry["entry_date"],
+                entry["updated_at"],
+                entry["title"],
+                entry["place"],
+                entry["text"],
+                entry["sentiment"],
+                entry["polarity"],
+                ",".join(entry["emotions"]),
+                entry["id"],
+                user_id,
+            ),
         )
         if cursor.rowcount != 1:
             return False
-        if tags is not None:
-            _replace_tags(conn, entry_id, tags)
+        _replace_tags(conn, entry["id"], entry["tags"])
         return True
 
 
@@ -324,18 +327,6 @@ def move_legacy_entries(user_id: int, legacy_name: str, entries: list[dict]) -> 
     """Insert already-analysed entries and remove the legacy rows, atomically."""
     with get_db() as conn:
         for entry in entries:
-            conn.execute(
-                "INSERT INTO entries (user_id, entry_date, created_at, text, "
-                "sentiment, polarity, emotions) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (
-                    user_id,
-                    entry["entry_date"],
-                    entry["created_at"],
-                    entry["text"],
-                    entry["sentiment"],
-                    entry["polarity"],
-                    ",".join(entry["emotions"]),
-                ),
-            )
+            _insert_entry(conn, user_id, entry)
         conn.execute("DELETE FROM legacy_entries WHERE user_id = ?", (legacy_name,))
     return len(entries)

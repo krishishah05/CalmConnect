@@ -5,7 +5,7 @@ Flask's signed, HttpOnly session cookie. Every POST form carries a CSRF token.
 """
 
 import secrets
-from datetime import date, datetime
+from datetime import datetime
 from functools import wraps
 
 from flask import (Blueprint, abort, flash, g, redirect, render_template, request,
@@ -46,14 +46,8 @@ def local_time(utc_timestamp: str) -> str:
     return f"{moment:%b} {moment.day}, {moment.hour % 12 or 12}:{moment:%M %p}"
 
 
-@web.app_template_global()
-def short_date(iso_day: str) -> str:
-    """'2026-10-01' -> 'Oct 1'"""
-    day = date.fromisoformat(iso_day)
-    return f"{day:%b} {day.day}"
-
-
 web.add_app_template_global(journal.nice_date, "nice_date")
+web.add_app_template_global(journal.short_date, "short_date")
 web.add_app_template_global(journal.describe_age, "describe_age")
 
 
@@ -68,7 +62,7 @@ def login_required(view):
 
 def _start_session(user_id: int):
     session.clear()  # drop anything from before login, including the old CSRF token
-    session["token"] = auth.issue_token(user_id, "web")
+    session["token"] = auth.issue_token(user_id)
     session.permanent = True
 
 
@@ -139,7 +133,7 @@ def create_entry():
             title=form.get("title"),
             place=form.get("place"),
             tags=form.get("tags"),
-            entry_date=form.get("entry_date"),
+            entry_date=form.get("date"),
             prompt=form.get("prompt"),
         )
     except ValidationError as error:
@@ -196,6 +190,7 @@ def show_entry(entry_id):
 @login_required
 def edit_entry(entry_id):
     entry = _owned_entry_or_404(entry_id)
+    today = journal.local_today().isoformat()
     if request.method == "POST":
         form = request.form
         changes = {field: form.get(field, "") for field in ("text", "title", "place", "tags", "date")}
@@ -203,10 +198,10 @@ def edit_entry(entry_id):
             journal.edit_entry(g.user["id"], entry_id, changes)
         except ValidationError as error:
             flash(str(error), "error")
-            return render_template("edit.html", entry=entry, form=form), 400
+            return render_template("edit.html", entry=entry, form=form, today=today), 400
         flash("Entry updated.", "success")
         return redirect(url_for("web.show_entry", entry_id=entry_id))
-    return render_template("edit.html", entry=entry, form=None)
+    return render_template("edit.html", entry=entry, form=None, today=today)
 
 
 @web.route("/entries/<int:entry_id>/delete", methods=["GET", "POST"])
