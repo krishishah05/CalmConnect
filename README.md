@@ -1,32 +1,38 @@
 # CalmConnect
 
-CalmConnect started as a small personal project because I wanted somewhere to write down my thoughts at the end of the day. Over time it grew into a way to keep track of little moments, notice how I was feeling, and come back to experiences I didn't want to forget.
+CalmConnect started as a small personal project because I wanted somewhere to write down my thoughts at the end of the day. Over time it turned into a way to keep track of little moments, notice how I was feeling, and come back to experiences I didn't want to forget.
 
-While studying abroad, I've especially enjoyed journaling about the places I've visited and the things I've experienced. When I look back on this semester, I want to remember more than photos and itineraries. I want to remember what those days actually felt like.
+I'm studying abroad this semester, and that's when it started to matter more to me. When I look back on these months, I want to remember more than photos and itineraries. I want to remember what the days actually felt like.
 
-CalmConnect is a private journal you can use from the terminal or a browser. You write, it keeps your entries searchable, and it gives you a gentle look back at your week or at a whole trip. It isn't a therapist or a chatbot, and it doesn't try to tell you how you feel.
+So this is a private journal that runs on my own laptop. I can write from the terminal or the browser, tag entries by trip, and later read a whole trip back in order. It does some light analysis of the words I write, but it isn't a therapist or a chatbot, and it doesn't pretend to know how I feel.
+
+![A trip collection in the browser](docs/screenshots/trip.png)
+<sub>A trip collection in the browser (sample entries).</sub>
 
 ## What it does
 
-- **Write, edit and delete entries**, each with an optional title, place and tags. You can backdate an entry if you missed a day.
-- **Prompts** for when you don't know where to start.
-- **Collections.** Tags like `morocco` or `copenhagen` group entries, so you can read a trip from start to finish and see how the tone of your writing changed along the way.
-- **Search** across text, titles and places, and filter by tag or date range.
-- **Weekly reflection**: tone per day, the overall mix, the feelings that came up most, how many days you wrote, and your current and longest streaks, summed up in a few plain sentences.
-- **Looking back** shows an older entry, preferring one written on this day in an earlier year.
+- Write, edit and delete entries. Each one can have a title, a place and tags, and you can backdate an entry if you missed a day.
+- If you don't know where to start, it can give you a prompt.
+- Every tag becomes a collection. Tag entries `morocco` or `copenhagen` and you can read that trip from start to finish, with a small timeline of how the tone of your writing changed along the way.
+- Search text, titles and places, and filter by tag or date.
+- A weekly reflection shows which days you wrote, the mix of tones, the feelings that came up most and your streaks, summed up in a few plain sentences.
+- "Looking back" brings up an older entry, preferring one from this day in an earlier year.
 
 ## How the analysis works
 
-Each entry gets two separate readings:
+I wanted something small enough that I could explain every part of it, so there's no machine learning model here.
 
-- **Tone** (positive, neutral or negative) comes from [TextBlob](https://textblob.readthedocs.io/)'s polarity score, which runs from -1 to 1. Anything between -0.1 and 0.1 is neutral.
-- **Feelings** (happy, calm, grateful, sad, anxious, angry, tired) come from a small word list in [`app/analysis.py`](app/analysis.py). Matching is on whole words and short phrases, so "unhappy" isn't happy and "downtown" isn't "down". A feeling is skipped when a negation ("not", "never", "don't" and so on) appears up to three words before it in the same clause. In "I wasn't sad, just tired", only *tired* counts.
+Each entry gets two separate readings. The tone (positive, neutral or negative) comes from [TextBlob](https://textblob.readthedocs.io/)'s polarity score, which goes from -1 to 1. Anything between -0.1 and 0.1 counts as neutral.
 
-The two can disagree on purpose: "Exhausted but proud of today" has a positive tone and still names *tired*. In weekly stats, each day's tone is the average of its entries, and every day counts equally, so one day with five entries doesn't outweigh the rest.
+Feelings (happy, calm, grateful, sad, anxious, angry, tired) come from a short word list in [`app/analysis.py`](app/analysis.py). It matches whole words, so "unhappy" isn't happy and "downtown" isn't "down". It also skips a feeling if "not", "never", "don't" or something similar shows up a few words before it in the same clause, so in "I wasn't sad, just tired", only tired counts.
+
+The two readings can disagree, and that's fine. "Exhausted but proud of today" is positive in tone and still tired.
+
+For the weekly numbers, each day's tone is the average of that day's entries, and every day counts the same. Otherwise one rough day with five entries would outweigh the rest of the week.
 
 ## Getting started
 
-Requires Python 3.10 or newer.
+You'll need Python 3.10 or newer.
 
 ```bash
 git clone https://github.com/krishishah05/CalmConnect
@@ -35,16 +41,16 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e .
 ```
 
-This installs Flask, TextBlob and Rich, and adds a `calmconnect` command. Your journal, a generated secret key and your CLI login are kept in `./data`, which git ignores. [`.env.example`](.env.example) lists the optional settings.
+That installs Flask, TextBlob and Rich and gives you a `calmconnect` command. Everything is saved in `./data` (your journal, a generated secret key and your CLI login), and git ignores that folder. [`.env.example`](.env.example) lists the optional settings.
 
-## The command line
+## From the terminal
 
 ```bash
 calmconnect register
 calmconnect journal                              # type freely, finish with Ctrl-D
 calmconnect journal --prompt
 calmconnect journal "Rainy day by the canal." --place Copenhagen --tags travel,copenhagen
-calmconnect journal "Finally wrote about Saturday." --date 2026-11-07
+calmconnect journal "Finally writing about Saturday." --date 2026-11-07
 
 calmconnect history --tag copenhagen --oldest    # read a trip in order
 calmconnect history -s bakery                    # search text, titles and places
@@ -59,7 +65,7 @@ calmconnect stats
 calmconnect tags morocco
 ```
 
-`calmconnect tags morocco` after a trip:
+Here's `calmconnect tags morocco` after a trip:
 
 ```
 #morocco  4 entries, 2026-10-01 to 2026-10-06
@@ -70,54 +76,57 @@ Your writing sounded more negative toward the end than at the start.
 Feelings named most: grateful (2), anxious (1), calm (1)
 ```
 
-Every command has `--help`. Without installing, `python -m cli.main` works from the project folder.
+Every command has `--help`. If you don't want to install it, `python -m cli.main` works the same way from the project folder.
 
-## The web app
+## In the browser
 
 ```bash
 flask --app api.main run
 ```
 
-Open http://127.0.0.1:5000 and create an account. There are four pages, **Write**, **Journal**, **Collections** and **Reflect**, built with plain HTML and CSS and no JavaScript. They work on phones and follow your system's light or dark mode.
+Then open http://127.0.0.1:5000 and make an account. There are four pages: Write, Journal, Collections and Reflect. It's plain HTML and CSS with no JavaScript, works on a phone, and follows your system's dark mode.
 
-With Docker (data stays in `./data`, and the port is only opened on localhost):
+<p>
+  <img src="docs/screenshots/write.png" width="49%" alt="Writing an entry with a prompt">
+  <img src="docs/screenshots/reflect.png" width="49%" alt="The weekly reflection page">
+</p>
 
-```bash
-docker compose up --build
-```
+There's also a Dockerfile and `docker-compose.yml` if you'd rather run it in a container (`docker compose up --build`). I mostly run CalmConnect directly on my laptop, so the Docker setup is less tested.
 
-## The JSON API
+## The API
 
-The same app serves a JSON API under `/api`. Get a token once, then send it as `Authorization: Bearer <token>`.
+The same Flask app has a JSON API under `/api`. Log in once to get a token, then send it as `Authorization: Bearer <token>`.
 
 ```bash
 curl -X POST localhost:5000/api/tokens -H "Content-Type: application/json" \
      -d '{"username": "krishi", "password": "a long password"}'
 ```
 
-| Route | Purpose |
+| Route | What it does |
 | --- | --- |
 | `POST /api/register` | Create an account (`username`, `password`) |
-| `POST /api/tokens` | Log in; returns a token valid for 30 days |
+| `POST /api/tokens` | Log in and get a token, valid for 30 days |
 | `DELETE /api/tokens/current` | Log out by revoking the token |
 | `GET /api/entries` | List entries. Optional: `q`, `tag`, `from`, `to`, `order=newest\|oldest`, `limit` (1 to 100), `offset` |
-| `POST /api/entries` | Create: `text`, plus optional `title`, `place`, `tags`, `date`, `prompt` |
+| `POST /api/entries` | Create an entry: `text`, plus optional `title`, `place`, `tags`, `date`, `prompt` |
 | `GET`, `PATCH`, `DELETE /api/entries/<id>` | Read, change (any of `text`, `title`, `place`, `tags`, `date`) or delete one entry |
-| `GET /api/tags` | Tags with entry counts and date ranges |
-| `GET /api/tags/<tag>` | One collection: entries in order, timeline and tone summary |
-| `GET /api/stats` | Weekly summary and streaks |
+| `GET /api/tags` | Your tags, with entry counts and date ranges |
+| `GET /api/tags/<tag>` | One collection: its entries in order, a timeline and a tone summary |
+| `GET /api/stats` | The weekly summary and streaks |
 | `GET /api/revisit` | An older entry to look back on |
 
-Errors come back as `{"error": "..."}`. Someone else's entry gets the same 404 as one that doesn't exist.
+Errors come back as `{"error": "..."}`. If you ask for someone else's entry, you get the same 404 as for one that doesn't exist.
 
-## Privacy and security
+## Privacy
 
-- Passwords are hashed with Werkzeug's scrypt. There are no built-in accounts.
-- The web app, CLI and API all use the same kind of login token. The database stores only a SHA-256 hash of each token, tokens expire after 30 days, and logging out deletes them.
-- Tokens never appear in URLs. The web app keeps its token in a signed HttpOnly cookie, and every form has a CSRF token.
-- Every query that touches entries is limited to the logged-in user in the SQL itself.
-- The `data` folder is created readable only by your OS user. The CLI has no way to act as another user without their password.
-- The server runs without debug mode and listens on 127.0.0.1 unless told otherwise.
+Journal entries are personal, so I tried to be careful here:
+
+- Passwords are hashed with scrypt (through Werkzeug), and there are no built-in accounts or default passwords.
+- The browser, CLI and API all log in with the same kind of token. Only a SHA-256 hash of each token is stored, tokens expire after 30 days, and logging out deletes them.
+- Tokens never go in URLs. The browser keeps its token in a signed HttpOnly cookie, and every form has a CSRF token.
+- Every database query that touches entries is limited to the logged-in user.
+- The `data` folder is created so only your OS user can read it, and the CLI can't act as another person without their password.
+- The server runs without debug mode and only listens on 127.0.0.1 unless you change it.
 
 ## Tests
 
@@ -125,9 +134,9 @@ Errors come back as `{"error": "..."}`. Someone else's entry gets the same 404 a
 python -m unittest discover tests
 ```
 
-The tests cover the analysis edge cases, entry validation, search and filters, streaks and weekly stats around date boundaries, trip collections staying correct after edits and deletes, migrating an old database, authentication, keeping users apart, and the API, web pages and CLI end to end.
+They cover the analysis edge cases, entry validation, search and filters, streaks and weekly stats around date boundaries, trip collections after edits and deletes, migrating an old database, logins, keeping users' journals separate, and the API, web pages and CLI end to end.
 
-## Project layout
+## How the code is laid out
 
 ```
 app/analysis.py   tone and feelings for a piece of text
@@ -139,21 +148,22 @@ api/main.py       Flask app setup and the JSON API
 api/web.py        browser pages (templates/ and static/ sit next to it)
 cli/main.py       the calmconnect command
 tests/            one test file per area
+docs/screenshots  the images in this README
 ```
 
 ## Limitations
 
-- **The analysis only sees words.** It misses sarcasm, slang, emoji and most non-English writing, and anything outside the word list. TextBlob also scores some sentences oddly: "I don't feel anxious anymore" comes out slightly negative. The tone and feelings are a rough summary of the words, never a judgement about anyone's mental health.
-- **Negation is simple.** It only looks a few words back. "Not only happy but relieved" is misread.
-- **"Today" follows the server's clock.** Days for streaks and stats use the timezone of the machine running CalmConnect (set `TZ` in Docker). That's fine for a personal install, but it isn't built for a shared server with people in different timezones.
-- **Entries aren't encrypted on disk**, there's no rate limiting on login, and Flask's built-in server isn't meant for the public internet. CalmConnect is meant to run on your own machine.
+- The analysis only looks at words. It misses sarcasm, slang, emoji and most non-English writing, and any feeling that isn't in the word list. TextBlob also gets some sentences wrong: "I don't feel anxious anymore" comes out slightly negative. Treat it as a rough summary of what you wrote, not a judgement about anyone's mental health.
+- Negation is simple. It only looks a few words back, so "Not only happy but relieved" gets misread.
+- "Today" follows the clock of the computer running CalmConnect. That's fine for a personal setup, but it isn't built for a shared server with people in different timezones.
+- Entries aren't encrypted on disk, there's no rate limiting on login, and Flask's built-in server isn't meant for the public internet. It's meant to run on your own machine.
 
 ## Upgrading from the first version
 
-The first version saved entries under a plain name, with no accounts. When the new version opens an old database, it moves those rows to a `legacy_entries` table instead of deleting them. Create an account, then run:
+The first version saved entries under a plain name with no accounts. When the new version opens an old database, it moves those rows to a `legacy_entries` table instead of deleting them. Make an account, then run:
 
 ```bash
 calmconnect import-legacy <the name you used before>
 ```
 
-Entries are copied with their original text and date and re-analysed with the current rules. The old version didn't record times, so imported entries show midnight UTC.
+Entries come across with their original text and date and get re-analysed with the current rules. The old version didn't save times, so imported entries show midnight UTC.
