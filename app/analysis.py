@@ -124,10 +124,3 @@ def analyze_text(text: str) -> dict:
         "polarity": round(polarity, 4),
         "emotions": detect_emotions(text),
     }
-
-
-def analyze_sentiment(text: str) -> dict:
-    """Old name and result shape, kept until the callers move to analyze_text."""
-    result = analyze_text(text)
-    return {"mood": result["sentiment"], "polarity": result["polarity"],
-            "emotions": result["emotions"]}
