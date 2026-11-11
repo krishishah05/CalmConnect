@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import entry_meta %}
+{% block title %}{{ entry.title or nice_date(entry.entry_date) }} · CalmConnect{% endblock %}
+{% block content %}
+<article class="entry">
+  <p class="card-date">{{ nice_date(entry.entry_date) }}{% if entry.place %} · {{ entry.place }}{% endif %}</p>
+  <h1>{{ entry.title or "Journal entry" }}</h1>
+  {% if entry.prompt %}<p class="prompt">{{ entry.prompt }}</p>{% endif %}
+  <div class="entry-text">{{ entry.text }}</div>
+  {{ entry_meta(entry) }}
+  <p class="hint">
+    Written {{ local_time(entry.created_at) }}{% if entry.updated_at %}, edited {{ local_time(entry.updated_at) }}{% endif %}.
+    Tone and feelings are picked up from the words you used. They're a rough reading, not a judgement.
+  </p>
+</article>
+
+<div class="actions">
+  <a class="button" href="{{ url_for('web.edit_entry', entry_id=entry.id) }}">Edit</a>
+  <a class="button secondary" href="{{ url_for('web.delete_entry', entry_id=entry.id) }}">Delete</a>
+  <a href="{{ url_for('web.entries') }}">Back to journal</a>
+</div>
+{% endblock %}

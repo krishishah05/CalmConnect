@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Write · CalmConnect{% endblock %}
+{% block content %}
+{% set f = form or {} %}
+<h1>How was today?</h1>
+
+<form method="post" action="{{ url_for('web.create_entry') }}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if prompt %}
+  <p class="prompt">{{ prompt }}</p>
+  <input type="hidden" name="prompt" value="{{ prompt }}">
+  {% endif %}
+
+  <label for="title" class="visually-hidden">Title</label>
+  <input id="title" name="title" class="title-input" maxlength="120"
+         placeholder="Title (optional)" value="{{ f.get('title', '') }}">
+
+  <label for="text" class="visually-hidden">Your entry</label>
+  <textarea id="text" name="text" rows="14" maxlength="10000" required autofocus
+            placeholder="Write whatever is on your mind…">{{ f.get('text', '') }}</textarea>
+
+  <div class="details-row">
+    <label>Place
+      <input name="place" maxlength="120" placeholder="Where were you?" value="{{ f.get('place', '') }}">
+    </label>
+    <label>Tags
+      <input name="tags" placeholder="travel, morocco" value="{{ f.get('tags', '') }}">
+    </label>
+    <label>Date
+      <input type="date" name="entry_date" max="{{ today }}" value="{{ f.get('entry_date') or today }}">
+    </label>
+  </div>
+  <p class="hint">Tags group entries together, like everything from one trip. Separate them with commas.</p>
+
+  <div class="actions">
+    <button type="submit">Save entry</button>
+    <a href="{{ url_for('web.write', prompt=1) }}">{{ "Try another prompt" if prompt else "Not sure what to write? Get a prompt" }}</a>
+  </div>
+</form>
+{% endblock %}

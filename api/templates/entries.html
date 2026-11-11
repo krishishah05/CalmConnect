@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_macros.html" import entry_card %}
+{% block title %}Journal · CalmConnect{% endblock %}
+{% block content %}
+{% set filtering = filters.q or filters.tag or filters.from or filters.to %}
+<h1>Your journal</h1>
+
+<form method="get" class="filters">
+  <label class="wide">Search <input type="search" name="q" value="{{ filters.q }}" placeholder="a word, title or place"></label>
+  <label>Tag
+    <select name="tag">
+      <option value="">Any</option>
+      {% for t in tags %}<option value="{{ t.tag }}" {% if t.tag == filters.tag %}selected{% endif %}>{{ t.tag }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Order
+    <select name="order">
+      <option value="newest">Newest first</option>
+      <option value="oldest" {% if filters.order == "oldest" %}selected{% endif %}>Oldest first</option>
+    </select>
+  </label>
+  <label>From <input type="date" name="from" value="{{ filters.from }}"></label>
+  <label>To <input type="date" name="to" value="{{ filters.to }}"></label>
+  <div class="actions">
+    <button type="submit">Show entries</button>
+    {% if filtering %}<a href="{{ url_for('web.entries') }}">Clear filters</a>{% endif %}
+  </div>
+</form>
+
+{% for entry in entries %}
+  {{ entry_card(entry) }}
+{% else %}
+  {% if filtering %}
+  <p class="quiet">No entries match those filters.</p>
+  {% else %}
+  <p class="quiet">Nothing here yet. <a href="{{ url_for('web.write') }}">Write your first entry.</a></p>
+  {% endif %}
+{% endfor %}
+
+<nav class="pager">
+  {% if page > 1 %}<a href="{{ url_for('web.entries', page=page - 1, **filters) }}">Previous page</a>{% endif %}
+  {% if has_more %}<a href="{{ url_for('web.entries', page=page + 1, **filters) }}">Next page</a>{% endif %}
+</nav>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import entry_card, day_dots, tone_bars %}
+{% block title %}Reflect · CalmConnect{% endblock %}
+{% block content %}
+<h1>Your week</h1>
+<p class="quiet">{{ nice_date(summary.start) }} to {{ nice_date(summary.end) }}</p>
+
+<section class="reflection">
+  {% for line in summary.reflection %}<p>{{ line }}</p>{% endfor %}
+</section>
+
+<section>
+  <h2>Day by day</h2>
+  {{ day_dots(summary.daily) }}
+</section>
+
+<section class="numbers">
+  <div>
+    <h2>Tone of entries</h2>
+    {{ tone_bars(summary.sentiment_counts, summary.total_entries) }}
+    {% if summary.average_polarity is not none %}
+    <p class="hint">Average polarity {{ "%.2f"|format(summary.average_polarity) }} on a scale from -1 to 1, averaged per day.</p>
+    {% endif %}
+  </div>
+
+  <div>
+    <h2>Feelings named</h2>
+    {% for item in summary.top_emotions %}
+    <p><span class="emotion">{{ item.emotion }}</span> in {{ item.entries }} {{ "entry" if item.entries == 1 else "entries" }}</p>
+    {% else %}
+    <p class="quiet">None picked up this week.</p>
+    {% endfor %}
+  </div>
+
+  <div>
+    <h2>Consistency</h2>
+    <p><strong>{{ summary.days_journaled }}</strong> of {{ summary.days_in_period }} days</p>
+    <p>Current streak: <strong>{{ summary.current_streak }}</strong> {{ "day" if summary.current_streak == 1 else "days" }}</p>
+    <p>Longest streak: <strong>{{ summary.longest_streak }}</strong> {{ "day" if summary.longest_streak == 1 else "days" }}</p>
+  </div>
+</section>
+
+{% if past_entry %}
+<section>
+  <h2>Looking back</h2>
+  {{ entry_card(past_entry, show_age=true) }}
+</section>
+{% endif %}
+
+<p class="hint">These numbers describe the words you wrote, not how you actually felt.</p>
+{% endblock %}

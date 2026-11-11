@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CalmConnect{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="{{ url_for('web.write') }}">CalmConnect</a>
+    {% if g.user %}
+    <nav>
+      <a href="{{ url_for('web.write') }}" {% if request.endpoint == 'web.write' %}aria-current="page"{% endif %}>Write</a>
+      <a href="{{ url_for('web.entries') }}" {% if request.endpoint == 'web.entries' %}aria-current="page"{% endif %}>Journal</a>
+      <a href="{{ url_for('web.collections') }}" {% if request.endpoint in ('web.collections', 'web.collection') %}aria-current="page"{% endif %}>Collections</a>
+      <a href="{{ url_for('web.reflect') }}" {% if request.endpoint == 'web.reflect' %}aria-current="page"{% endif %}>Reflect</a>
+      <form method="post" action="{{ url_for('web.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="link-button">Log out</button>
+      </form>
+    </nav>
+    {% endif %}
+  </header>
+
+  <main>
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+    <p class="flash flash-{{ category }}" role="status">{{ message }}</p>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

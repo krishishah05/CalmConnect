@@ -1,0 +1,50 @@
+{% macro tag_links(tags) %}
+{% for tag in tags %}<a class="tag" href="{{ url_for('web.collection', tag=tag) }}">{{ tag }}</a>{% endfor %}
+{% endmacro %}
+
+{% macro entry_meta(entry) %}
+<p class="meta">
+  <span class="tone tone-{{ entry.sentiment }}">{{ entry.sentiment }} tone</span>
+  {% for emotion in entry.emotions %}<span class="emotion">{{ emotion }}</span>{% endfor %}
+  {{ tag_links(entry.tags) }}
+</p>
+{% endmacro %}
+
+{% macro entry_card(entry, show_age=false) %}
+<article class="entry-card">
+  <a href="{{ url_for('web.show_entry', entry_id=entry.id) }}">
+    <p class="card-date">
+      {{ nice_date(entry.entry_date) }}{% if entry.place %} · {{ entry.place }}{% endif %}
+      {% if show_age %}<span class="quiet"> · {{ describe_age(entry.entry_date) }}</span>{% endif %}
+    </p>
+    {% if entry.title %}<h2>{{ entry.title }}</h2>{% endif %}
+    <p class="snippet">{{ entry.text|truncate(240) }}</p>
+  </a>
+  {{ entry_meta(entry) }}
+</article>
+{% endmacro %}
+
+{# by_date labels each day "Oct 1" instead of "Thu", for spans longer than a week. #}
+{% macro day_dots(days, by_date=false) %}
+<ol class="week">
+  {% for day in days %}
+  <li class="day {{ 'tone-' ~ day.sentiment if day.sentiment else 'empty' }}">
+    {% if day.entries %}<a href="{{ url_for('web.entries', **{'from': day.date, 'to': day.date}) }}">{% endif %}
+    <span class="weekday">{{ short_date(day.date) if by_date else day.weekday }}</span>
+    <span class="dot" aria-hidden="true"></span>
+    <span class="day-label">{% if day.entries %}{{ day.sentiment }}{% if day.entries > 1 %} ({{ day.entries }}){% endif %}{% else %}no entry{% endif %}</span>
+    {% if day.entries %}</a>{% endif %}
+  </li>
+  {% endfor %}
+</ol>
+{% endmacro %}
+
+{% macro tone_bars(counts, total) %}
+{% for label, count in counts.items() %}
+<div class="bar-row">
+  <span>{{ label }}</span>
+  <progress class="tone-{{ label }}" value="{{ count }}" max="{{ total or 1 }}"></progress>
+  <span>{{ count }}</span>
+</div>
+{% endfor %}
+{% endmacro %}

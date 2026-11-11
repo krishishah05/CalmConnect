@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Delete entry · CalmConnect{% endblock %}
+{% block content %}
+<section class="narrow">
+  <h1>Delete this entry?</h1>
+  <p>Your entry from <strong>{{ nice_date(entry.entry_date) }}</strong> will be removed for good. This can't be undone.</p>
+  <blockquote class="entry-text">{{ entry.text|truncate(300) }}</blockquote>
+  <form method="post" class="actions">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="danger">Delete entry</button>
+    <a href="{{ url_for('web.show_entry', entry_id=entry.id) }}">Keep it</a>
+  </form>
+</section>
+{% endblock %}

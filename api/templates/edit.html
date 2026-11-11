@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Edit entry · CalmConnect{% endblock %}
+{% block content %}
+{# After a failed save, show what was typed rather than the stored values. #}
+{% set f = form or {"text": entry.text, "title": entry.title or "", "place": entry.place or "",
+                    "tags": entry.tags|join(", "), "date": entry.entry_date} %}
+<h1>Edit entry</h1>
+<form method="post" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if entry.prompt %}<p class="prompt">{{ entry.prompt }}</p>{% endif %}
+
+  <label for="title" class="visually-hidden">Title</label>
+  <input id="title" name="title" class="title-input" maxlength="120"
+         placeholder="Title (optional)" value="{{ f.get('title', '') }}">
+
+  <label for="text" class="visually-hidden">Entry text</label>
+  <textarea id="text" name="text" rows="14" maxlength="10000" required autofocus>{{ f.get('text', '') }}</textarea>
+
+  <div class="details-row">
+    <label>Place <input name="place" maxlength="120" value="{{ f.get('place', '') }}"></label>
+    <label>Tags <input name="tags" value="{{ f.get('tags', '') }}"></label>
+    <label>Date <input type="date" name="date" required value="{{ f.get('date', '') }}"></label>
+  </div>
+
+  <div class="actions">
+    <button type="submit">Save changes</button>
+    <a href="{{ url_for('web.show_entry', entry_id=entry.id) }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

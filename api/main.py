@@ -1,4 +1,4 @@
-"""Flask app: a JSON API under /api.
+"""Flask app: a JSON API under /api plus the small web journal in web.py.
 
 Run locally with:  flask --app api.main run
 """
@@ -244,6 +244,8 @@ def _security_headers(response):
 
 
 def create_app(config: dict | None = None) -> Flask:
+    from api.web import web
+
     app = Flask(__name__)
     app.config.update(
         SECRET_KEY=_load_secret_key(),
@@ -256,6 +258,7 @@ def create_app(config: dict | None = None) -> Flask:
     )
     app.config.update(config or {})
     app.register_blueprint(api)
+    app.register_blueprint(web)
     app.register_error_handler(Exception, _handle_error)
     app.after_request(_security_headers)
     return app

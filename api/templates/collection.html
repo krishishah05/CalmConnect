@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import entry_card, day_dots, tone_bars %}
+{% block title %}{{ summary.tag|replace("-", " ")|title }} · CalmConnect{% endblock %}
+{% block content %}
+<p class="card-date"><a href="{{ url_for('web.collections') }}">Collections</a></p>
+<h1>{{ summary.tag|replace("-", " ")|title }}</h1>
+<p class="quiet">
+  {{ summary.total_entries }} {{ "entry" if summary.total_entries == 1 else "entries" }}
+  {% if summary.days_spanned > 1 %}over {{ summary.days_spanned }} days, {{ nice_date(summary.first_date) }} to {{ nice_date(summary.last_date) }}
+  {% else %}on {{ nice_date(summary.first_date) }}{% endif %}
+</p>
+
+<section>
+  <h2>How it felt along the way</h2>
+  {{ day_dots(summary.timeline, by_date=true) }}
+  {% if summary.tone_shift %}<p>{{ summary.tone_shift }}</p>{% endif %}
+  <div class="numbers">
+    <div>{{ tone_bars(summary.sentiment_counts, summary.total_entries) }}</div>
+    <div>
+      {% for item in summary.top_emotions %}
+      <p><span class="emotion">{{ item.emotion }}</span> in {{ item.entries }} {{ "entry" if item.entries == 1 else "entries" }}</p>
+      {% else %}
+      <p class="quiet">No specific feelings were named.</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Entries, in order</h2>
+  {% for entry in summary.entries %}{{ entry_card(entry) }}{% endfor %}
+</section>
+{% endblock %}

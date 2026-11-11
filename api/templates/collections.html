@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Collections · CalmConnect{% endblock %}
+{% block content %}
+<h1>Collections</h1>
+<p class="quiet">Every tag you use becomes a collection, so you can read back through a trip, a semester or anything else in the order you lived it.</p>
+
+{% for t in tags %}
+<a class="collection-row" href="{{ url_for('web.collection', tag=t.tag) }}">
+  <span class="collection-name">{{ t.tag }}</span>
+  <span class="quiet">
+    {{ t.entries }} {{ "entry" if t.entries == 1 else "entries" }},
+    {% if t.first_date == t.last_date %}{{ nice_date(t.first_date) }}{% else %}{{ nice_date(t.first_date) }} to {{ nice_date(t.last_date) }}{% endif %}
+  </span>
+</a>
+{% else %}
+<p class="quiet">No collections yet. Add tags like <em>travel</em> or <em>copenhagen</em> when you write, and they'll show up here.</p>
+{% endfor %}
+{% endblock %}

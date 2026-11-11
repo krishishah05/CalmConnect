@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% set registering = mode == "register" %}
+{% block title %}{{ "Create an account" if registering else "Log in" }} · CalmConnect{% endblock %}
+{% block content %}
+<section class="narrow">
+  <h1>{{ "Create your journal" if registering else "Welcome back" }}</h1>
+  <p class="quiet">
+    {% if registering %}A private place to put your thoughts at the end of the day.
+    {% else %}After a long day, sometimes you just need somewhere to put your thoughts.{% endif %}
+  </p>
+
+  <form method="post" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Username
+      <input name="username" value="{{ username or '' }}" autocomplete="username" required autofocus>
+    </label>
+    <label>Password
+      <input type="password" name="password" required minlength="{{ 8 if registering else 1 }}"
+             autocomplete="{{ 'new-password' if registering else 'current-password' }}">
+    </label>
+    {% if registering %}<p class="hint">At least 8 characters.</p>{% endif %}
+    <button type="submit">{{ "Create account" if registering else "Log in" }}</button>
+  </form>
+
+  <p class="quiet">
+    {% if registering %}Already have an account? <a href="{{ url_for('web.login') }}">Log in</a>
+    {% else %}New here? <a href="{{ url_for('web.register') }}">Create an account</a>{% endif %}
+  </p>
+</section>
+{% endblock %}
