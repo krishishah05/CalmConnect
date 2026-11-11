@@ -110,6 +110,10 @@ def _ask_password(confirm: bool = False) -> str:
 
 # --- output helpers ---------------------------------------------------------
 
+def _count(n: int) -> str:
+    return f"{n} {'entry' if n == 1 else 'entries'}"
+
+
 def _tone(sentiment: str | None) -> str:
     if not sentiment:
         return "[dim]no entry[/dim]"
@@ -311,12 +315,11 @@ def cmd_stats(args):
     if summary["top_emotions"]:
         console.print("\n[bold]Feelings named most[/bold]")
         for item in summary["top_emotions"]:
-            console.print(f"  {item['emotion']:9} {item['entries']} "
-                          f"{'entry' if item['entries'] == 1 else 'entries'}")
+            console.print(f"  {item['emotion']:9} {_count(item['entries'])}")
 
     console.print("\n[bold]Consistency[/bold]")
     console.print(f"  wrote on {summary['days_journaled']} of {summary['days_in_period']} days, "
-                  f"{summary['total_entries']} entries")
+                  f"{_count(summary['total_entries'])}")
     console.print(f"  current streak {summary['current_streak']}, "
                   f"longest streak {summary['longest_streak']}\n")
 
@@ -359,7 +362,7 @@ def cmd_tags(args):
     summary = collection_summary(user["id"], args.tag)
     if summary is None:
         raise CliError(f"No entries tagged '{args.tag}'.")
-    console.print(f"\n[bold]#{summary['tag']}[/bold]  [dim]{summary['total_entries']} entries, "
+    console.print(f"\n[bold]#{summary['tag']}[/bold]  [dim]{_count(summary['total_entries'])}, "
                   f"{summary['first_date']} to {summary['last_date']}[/dim]\n")
     _day_strip(summary["timeline"], by_date=True)
     if summary["tone_shift"]:
@@ -373,7 +376,7 @@ def cmd_tags(args):
 def cmd_import_legacy(args):
     count = journal.import_legacy(current_user()["id"], args.name)
     if count:
-        console.print(f"Imported {count} entries saved under '{args.name}' by the old version.")
+        console.print(f"Imported {_count(count)} saved under '{args.name}' by the old version.")
     else:
         console.print(f"No old entries found under '{args.name}'.")
 

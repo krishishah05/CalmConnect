@@ -159,8 +159,13 @@ class TestCliJournal(CliTestCase):
         code, out = self.run_cli("tags")
         self.assertIn("#morocco", out)
         code, out = self.run_cli("tags", "morocco")
+        self.assertIn("2 entries, 2026-10-01 to 2026-10-03", out)
         self.assertIn("Nervous on the first day", out)
         self.assertLess(out.index("Nervous"), out.index("Grateful"))
+
+        code, out = self.run_cli("stats")
+        self.assertIn("1 entry", out)
+        self.assertNotIn("1 entries", out)
 
 
 if __name__ == "__main__":
