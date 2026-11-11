@@ -168,7 +168,7 @@ docs/screenshots  the images in this README
 
 ## Limitations
 
-- The analysis only looks at words. It misses sarcasm, slang, emoji and most non-English writing, and any feeling that isn't in the word list. TextBlob also gets some sentences wrong: "I don't feel anxious anymore" comes out slightly negative. Treat it as a rough summary of what you wrote, not a judgement about anyone's mental health.
+- The analysis only looks at words. It misses sarcasm, slang, emoji and most non-English writing, and any feeling that isn't in the word list. TextBlob also gets some sentences wrong: "I don't feel anxious anymore" comes out slightly negative. Treat it as a rough summary of what you wrote, not a judgement about anyone's mental health. There's no way to set your own mood on an entry yet, so if the tone label is wrong, it stays wrong; that's the next thing I'd add.
 - Negation is simple. It only looks a few words back, so "Not only happy but relieved" gets misread.
 - "Today" follows the clock of the computer running CalmConnect. That's fine for a personal setup, but it isn't built for a shared server with people in different timezones.
 - Entries aren't encrypted on disk, there's no rate limiting on login, and Flask's built-in server isn't meant for the public internet. It's meant to run on your own machine.
